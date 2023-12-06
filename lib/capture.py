@@ -31,22 +31,29 @@ def udp_head(raw_data):
     srcport, destport, length, chksum = struct.unpack('! H H H H', raw_data[:8])
     return srcport, destport, length, chksum, raw_data[8:]
 
+def tcp_head(raw_data):
+    pass
+
 def print_protocol(ipv4):
     data = ipv4[6]
     match ipv4[3]:
         case 1:
             icmp = icmp_head(data)
             print('\t - ' + 'ICMP Packet:')
-            print('\t\t - ' + 'Type: {}, Code: {}, Checksum:{},'.format(icmp[0], icmp[1], icmp[2]))
+            print('\t\t - ' + 'Type: {}, Code: {}, Checksum: {},'.format(icmp[0], icmp[1], icmp[2]))
             print('\t\t - ' + 'ICMP Data:')
-            print('\t\t\t ' + icmp[3])
+            print('\t\t\t ' + str(icmp[3]))
+            return
+        case 6:
+            tcp = tcp_head(data)
             return
         case 17:
             udp = udp_head(data)
             print('\t - ' + 'UDP Segment:')
-            print('\t\t - ' + 'Source Port: {}, Destination Port: {}, Length:{}'.format(udp[0], udp[1], udp[2]))
+            print('\t\t - ' + 'Source Port: {}, Destination Port: {}, Length: {}'.format(udp[0], udp[1], udp[2]))
             print('\t\t - ' + 'UDP Data:')
-            print('\t\t\t ' + udp[3])
+            print('\t\t\t ' + str(udp[3]))
+            return
         
 
 
