@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor</title>
+    <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+    <h1> Network Monitor</h1>
+    <div class = "containers">
+        <div class="activities-container">
+            <table id="network-activity-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>PID</th>
+                        <th>Send (B/sec)</th>
+                        <th>Receive (B/sec)</th>
+                        <th>Total (B/sec)</th>
+                    </tr>
+                </thead>
+            </table>
+            <div class="scrollable-body">
+                <table id="network-activity-body">
+                    <tbody>
+                        <!-- Table data will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class = "graph-container">
+            <h1>Graph Container</h1>
+        </div>
+    </div>
+    
+
+    <script src = "../index.mjs"></script>
+    
+</body>
+</html>

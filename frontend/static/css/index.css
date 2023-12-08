@@ -1,0 +1,42 @@
+
+
+.activities-container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#network-activity-table,
+#network-activity-body {
+    width: 100%;
+    border-collapse: collapse;
+
+}
+
+#network-activity-table th,
+#network-activity-body td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#network-activity-table th {
+    background-color: #f2f2f2;
+    color: black;
+    position: sticky;
+    top: 0;
+}
+
+.scrollable-body {
+    height: 100px; /* Adjust this value as needed */
+    overflow: hidden;
+    
+}
+
+/* Set explicit widths for your columns if necessary to ensure alignment */
+#network-activity-table th:nth-child(1),
+#network-activity-body td:nth-child(1) {
+    width: 20%;
+}
+/* Repeat for each column as necessary */
