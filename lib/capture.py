@@ -8,41 +8,74 @@ from pparser import parse
 from parse.tcp import TCP
 from parse.udp import UDP
 
+# refresh intervals to clean up connection and cache
+CLEAN_UP = 3
+
+# refresh intervals to re-calculate metrics
+UPDATE = 1
+
+# last timestamp before refresh
+last_timestamp = time.time()
+
+# cached port to process id mapping
+port_to_process = {}
+
+# process id to packets sent mapping
+packets_sent = {}
+
+# process id to packets received mapping
+packets_received = {}
+
 # process id to bytes sent mapping
 bytes_sent = {}
 
 # process id to bytes received mapping
 bytes_received = {}
 
-# process id to established connection time
-process_time = {}
-
 ignoreSame = True
 
-def get_process(src_port, dst_port, length):
-    # if we want to get name:
-    # procs = {p.pid: p.info for p in psutil.process_iter(['name'])}
-    connections = psutil.net_connections(kind='inet')
-    for conn in connections:
-        if conn.laddr.port == src_port:
-            # sent
-            if not process_time.get(conn.pid):
-                process_time[conn.pid] = time.time()
-            if not bytes_sent.get(conn.pid):
-                bytes_sent[conn.pid] = 0
-            bytes_sent[conn.pid] += length
-            process_id = conn.pid
-            break
-        elif conn.laddr.port == dst_port:
-            # received
-            if not process_time.get(conn.pid):
-                process_time[conn.pid] = time.time()
-            if not bytes_received.get(conn.pid):
-                bytes_received[conn.pid] = 0
-            bytes_received[conn.pid] += length
-            process_id = conn.pid
-            break
+def map_to_process(src_port, dst_port, kind): 
+    pid = port_to_process.get(dst_port) if kind == "Incoming" else port_to_process.get(src_port)
+    if not pid: 
+        connections = psutil.net_connections(kind='inet')
+        for conn in connections:
+            if kind == "Incoming":
+                if conn.laddr.port == dst_port:
+                    port_to_process[dst_port] = conn.pid
+                    return conn.pid
+            else:
+                if conn.laddr.port == src_port:
+                    port_to_process[src_port] = conn.pid
+                    return conn.pid
+    return pid
 
+def track_metric(src_port, dst_port, length, kind):
+    pid = map_to_process(src_port, dst_port, kind)
+    if not pid:
+        return
+    if kind == "Incoming":
+        if not bytes_received.get(pid):
+            bytes_received[pid] = 0
+        bytes_received[pid] += length
+        if not packets_received.get(pid):
+            packets_received[pid] = 0
+        packets_received[pid] += 1
+    else:
+        if not bytes_sent.get(pid):
+            bytes_sent[pid] = 0
+        bytes_sent[pid] += length
+        if not packets_sent.get(pid):
+            packets_sent[pid] = 0
+        packets_sent[pid] += 1
+    print("\n+++++++++++++++++++++++++++++++\n")
+    print(port_to_process)
+    print(bytes_received)
+    print(packets_received)
+    print(bytes_sent)
+    print(packets_sent)
+    print("\n+++++++++++++++++++++++++++++++\n")
+
+    """
     current_time = time.time()
     if bytes_sent.get(process_id):
         sent_per_sec = bytes_sent[process_id] / (current_time - process_time[process_id])
@@ -50,6 +83,7 @@ def get_process(src_port, dst_port, length):
     if bytes_received.get(process_id):
         received_per_sec = bytes_received[process_id] / (current_time - process_time[process_id])
         print(f"bytes received per sec: {received_per_sec} bytes per second")
+    """
 
 def get_interfaces_mac():
     interfaces_mac = {}
@@ -73,11 +107,9 @@ def main():
     while True:
         raw_data, addr = s.recvfrom(65535)
         parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
-
-        if parsed and isinstance(parsed, TCP):
-            print("TCP packet")
-        if parsed and isinstance(parsed, UDP):
-            print("UDP packet")
+        if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+            data = parsed.getData()
+            track_metric(data['src'], data['dst'], data['bytes'], data['type'])
             
         sys.stdout.flush()
 
