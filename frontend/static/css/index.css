@@ -1,42 +1,118 @@
+.containers {
+    max-width: 1300px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+.activities-containers {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
 
 
-.activities-container {
+.table-container{
     width: 80%;
-    margin: 0 auto;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-#network-activity-table,
-#network-activity-body {
-    width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
-
 }
 
-#network-activity-table th,
-#network-activity-body td {
+tbody {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    height: 200px;
+}
+
+thead tr {
+    display: block;
+}
+
+th,td {
+    padding: 5px 10px;
+    width: 200px;
+}
+
+th {
+    background: #e0e2e0;
+}
+
+
+/* .process-activities-container {
+    width: 80%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.process-activities-container tbody {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    height: 200px;
+}
+
+.process-activities-container thead tr {
+    display: block;
+}
+
+.process-activities-container th,
+.process-activities-container td {
+    padding: 5px 10px;
+    width: 200px;
+}
+
+.process-activities-container th {
+    background: #e0e2e0;
+} */
+
+
+/* Buttons for toggling */
+.toggle-btn{
+    height: 50px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 40px;
+    text-align:left;
+}
+
+.template{
+    visibility: hidden;
+}
+
+
+.packet-sniff-container {
+    margin-top: 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Spacing between cards */
+    height: 800px;
+    overflow: auto;
+    padding-top: 40px; /* Add this line */
+}
+
+.packet-card {
     border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    width: 300px; /* or any desired width */
+
 }
 
-#network-activity-table th {
+.card-header {
+
     background-color: #f2f2f2;
-    color: black;
-    position: sticky;
-    top: 0;
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+    font-weight: bold;
 }
 
-.scrollable-body {
-    height: 100px; /* Adjust this value as needed */
-    overflow: hidden;
-    
+.card-body {
+    padding: 10px;
+
 }
 
-/* Set explicit widths for your columns if necessary to ensure alignment */
-#network-activity-table th:nth-child(1),
-#network-activity-body td:nth-child(1) {
-    width: 20%;
-}
-/* Repeat for each column as necessary */
+
+/* Buttons for toggling */
