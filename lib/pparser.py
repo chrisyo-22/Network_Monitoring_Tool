@@ -3,6 +3,7 @@ from parse.ipv4 import IPV4
 from parse.tcp import TCP
 from parse.icmp import ICMP
 from parse.udp import UDP
+from parse.dns import DNS
 
 def _print_protocol(ipv4):
     data = ipv4.payload
@@ -22,7 +23,7 @@ def _print_protocol(ipv4):
 
 def parse(raw_data, iface, mac_addr, ignoreSame):
     eth = EthFrame(raw_data, iface, mac_addr)
-    if ignoreSame and eth.kind == "Loopback":
+    if (ignoreSame and eth.kind == "Loopback") or eth.proto != 8:
         return
     print(eth)
     if eth.proto == 8:

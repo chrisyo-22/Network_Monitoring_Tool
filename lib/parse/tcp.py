@@ -34,11 +34,11 @@ class TCP:
         return ', '.join(flags)
     def __str__(self):
         info = '\t - TCP Packet:\n'
-        info += '\t\t - Source Port: {}, Dest Port: {}, Protocol: {}\n'.format(self.src, self.dst, self.proto)
+        info += '\t\t - Source Port: {}, Dest Port: {}\n'.format(self.src, self.dst)
         info += '\t\t - SeqNumber: {}, ACKNum: {}, Window Size: {}\n'.format(self.seq, self.ack, self.window)
         info += '\t\t - Header Length: {}, Data Size: {} Bytes, Checksum: {}\n'.format(self.len, self.bytesize, self.chksum)
         info += '\t\t - Flags: {}\n'.format(self.flags)
-        info += '\t\t - This is an {} packet\n'.format(self.proto)
+        info += '\t\t - This is a potential {} packet\n'.format(self.proto)
         return info
     def strPayload(self):
         info = '\t\t - TCP Payload:\n'
