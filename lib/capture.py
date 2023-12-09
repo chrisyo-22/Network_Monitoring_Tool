@@ -1,11 +1,12 @@
 import socket
 import sys
 import os
-from pparser import parse
-
 import time
-
 import psutil
+
+from pparser import parse
+from parse.tcp import TCP
+from parse.udp import UDP
 
 # process id to bytes sent mapping
 bytes_sent = {}
@@ -71,7 +72,13 @@ def main():
     interfaces = get_interfaces_mac()
     while True:
         raw_data, addr = s.recvfrom(65535)
-        parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
+        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
+
+        # testing
+        if parsed and isinstance(parsed, TCP):
+            print("TCP packet")
+        if parsed and isinstance(parsed, UDP):
+            print("UDP packet")
 
         sys.stdout.flush()
 
