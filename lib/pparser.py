@@ -10,18 +10,20 @@ def _handle_tcp(data, kind, len):
     print(tcp)
     if(53 in [tcp.src, tcp.dst]):
         dns = DNS(tcp.payload)
-        return print(dns)
+        print(dns)
+    return tcp
 
 def _handle_icmp(data):
     icmp = ICMP(data)
-    print(icmp)
+    return print(icmp)
 
 def _handle_udp(data, kind):
     udp = UDP(data, kind)
     print(udp)
     if(53 in [udp.src, udp.dst]):
         dns = DNS(udp.payload)
-        return print(dns)
+        print(dns)
+    return udp
 
 def _parse_protocol(ipv4):
     data = ipv4.payload
