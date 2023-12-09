@@ -26,7 +26,7 @@ class ICMP:
     
     def __str__(self):
         info = '\t - ICMP Packet:\n'
-        info += '\t\t - Type: {} ({}), Code: {}, Checksum: {}\n'.format(self.itype, self.getType(), self.code, self.chksum)
+        info += '\t\t - Type: {} ({}), Code: {}, Checksum: {}\n'.format(self.getType(), self.itype, self.code, self.chksum)
         info += '\t\t - ICMP Payload:\n'
         info += '\t\t ' + str(self.payload) + '\n'
         return info

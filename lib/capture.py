@@ -74,12 +74,11 @@ def main():
         raw_data, addr = s.recvfrom(65535)
         parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
 
-        # testing
         if parsed and isinstance(parsed, TCP):
             print("TCP packet")
         if parsed and isinstance(parsed, UDP):
             print("UDP packet")
-
+            
         sys.stdout.flush()
 
 main()
