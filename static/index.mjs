@@ -1,6 +1,6 @@
 
 import { NetworkPacket } from "./model/packetType.mjs";
-import { getPacket } from "./api/packet.mjs";
+import { getPacket } from "./api.mjs";
 
 document.addEventListener('DOMContentLoaded', function () {
     const mockData = [
