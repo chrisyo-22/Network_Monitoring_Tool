@@ -1,9 +1,55 @@
 import socket
 import sys
 import os
+import time
+import psutil
+
 from pparser import parse
+from parse.tcp import TCP
+from parse.udp import UDP
+
+# process id to bytes sent mapping
+bytes_sent = {}
+
+# process id to bytes received mapping
+bytes_received = {}
+
+# process id to established connection time
+process_time = {}
 
 ignoreSame = True
+
+def get_process(src_port, dst_port, length):
+    # if we want to get name:
+    # procs = {p.pid: p.info for p in psutil.process_iter(['name'])}
+    connections = psutil.net_connections(kind='inet')
+    for conn in connections:
+        if conn.laddr.port == src_port:
+            # sent
+            if not process_time.get(conn.pid):
+                process_time[conn.pid] = time.time()
+            if not bytes_sent.get(conn.pid):
+                bytes_sent[conn.pid] = 0
+            bytes_sent[conn.pid] += length
+            process_id = conn.pid
+            break
+        elif conn.laddr.port == dst_port:
+            # received
+            if not process_time.get(conn.pid):
+                process_time[conn.pid] = time.time()
+            if not bytes_received.get(conn.pid):
+                bytes_received[conn.pid] = 0
+            bytes_received[conn.pid] += length
+            process_id = conn.pid
+            break
+
+    current_time = time.time()
+    if bytes_sent.get(process_id):
+        sent_per_sec = bytes_sent[process_id] / (current_time - process_time[process_id])
+        print(f"bytes sent per sec: {sent_per_sec} bytes per second")
+    if bytes_received.get(process_id):
+        received_per_sec = bytes_received[process_id] / (current_time - process_time[process_id])
+        print(f"bytes received per sec: {received_per_sec} bytes per second")
 
 def get_interfaces_mac():
     interfaces_mac = {}
@@ -26,6 +72,14 @@ def main():
     interfaces = get_interfaces_mac()
     while True:
         raw_data, addr = s.recvfrom(65535)
-        parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
+        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
+
+        # testing
+        if parsed and isinstance(parsed, TCP):
+            print("TCP packet")
+        if parsed and isinstance(parsed, UDP):
+            print("UDP packet")
+
+        sys.stdout.flush()
 
 main()
