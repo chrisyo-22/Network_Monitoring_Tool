@@ -4,6 +4,7 @@
 ```
 ssh mininet@....
 
+cd lib
 sudo python3 -m pip install -r requirements.txt
 sudo mn
 h1 sudo python3 capture.py > capture.log &

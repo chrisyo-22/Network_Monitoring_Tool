@@ -4,22 +4,16 @@ from parse.tcp import TCP
 from parse.icmp import ICMP
 from parse.udp import UDP
 from parse.dns import DNS
-
-def _print_protocol(ipv4):
+    
+def parse_ipv4(ipv4):
     data = ipv4.payload
     protocol = ipv4.proto
     if protocol == 1:
-        icmp = ICMP(data)
-        print(icmp)
-        return
+        return ICMP(data)
     if protocol == 6:
-        tcp = TCP(data, ipv4.kind, ipv4.getPayloadLength())
-        print(tcp)
-        return
+        return TCP(data, ipv4.kind, ipv4.getPayloadLength())
     if protocol == 17:
-        udp = UDP(data, ipv4.kind)
-        print(udp)
-        return
+        return UDP(data, ipv4.kind)
 
 def parse(raw_data, iface, mac_addr, ignoreSame):
     eth = EthFrame(raw_data, iface, mac_addr)
@@ -29,4 +23,7 @@ def parse(raw_data, iface, mac_addr, ignoreSame):
     if eth.proto == 8:
         ipv4 = IPV4(eth.payload, eth.kind)
         print(ipv4)
-        _print_protocol(ipv4)
+        parsed_ipv4 = parse_ipv4(ipv4)
+        if parsed_ipv4:
+            print(parsed_ipv4)
+            return parsed_ipv4
