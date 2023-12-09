@@ -1,6 +1,8 @@
 import socket
-import struct
 import sys
+import os
+from pparser import parse
+
 import time
 
 import psutil
@@ -14,55 +16,7 @@ bytes_received = {}
 # process id to established connection time
 process_time = {}
 
-def get_mac_addr(bytes_addr):
-    bytes_str = map('{:02x}'.format, bytes_addr)
-    return ':'.join(bytes_str).upper()
-
-def ethernet_head(raw_data):
-    dest, src, prototype = struct.unpack('! 6s 6s H', raw_data[:14])
-    proto = socket.htons(prototype)
-    data = raw_data[14:]
-    return get_mac_addr(dest), get_mac_addr(src), proto, data
-
-def get_ip(addr):
-    return '.'.join(map(str, addr))
-
-def ipv4_head(raw_data):
-    version_header_length = raw_data[0]
-    version = version_header_length >> 4
-    header_length = (version_header_length & 15) * 4
-    ttl, proto, src, target = struct.unpack('! 8x B B 2x 4s 4s', raw_data[:20])
-    data = raw_data[header_length:]
-    return version, header_length, ttl, proto, get_ip(src), get_ip(target), data
-
-def icmp_head(raw_data):
-    itype, code, chksum = struct.unpack('! B B H', raw_data[:4])
-    return itype, code, chksum, raw_data[4:]
-
-def udp_head(raw_data):
-    srcport, destport, length, chksum = struct.unpack('! H H H H', raw_data[:8])
-    return srcport, destport, length, chksum, raw_data[8:]
-
-def tcp_head(raw_data):
-    pass
-
-def print_protocol(ipv4):
-    data = ipv4[6]
-    if ipv4[3] == 1:
-        icmp = icmp_head(data)
-        print('\t - ' + 'ICMP Packet:')
-        print('\t\t - ' + 'Type: {}, Code: {}, Checksum: {},'.format(icmp[0], icmp[1], icmp[2]))
-        print('\t\t - ' + 'ICMP Data:')
-        print('\t\t\t ' + str(icmp[3]))
-    elif ipv4[3] == 6:
-        tcp = tcp_head(data)
-    elif ipv4[3] == 17:
-        udp = udp_head(data)
-        print('\t - ' + 'UDP Segment:')
-        print('\t\t - ' + 'Source Port: {}, Destination Port: {}, Length: {}'.format(udp[0], udp[1], udp[2]))
-        print('\t\t - ' + 'UDP Data:')
-        print('\t\t\t ' + str(udp[3]))
-        get_process(udp[0], udp[1], udp[2])
+ignoreSame = True
 
 def get_process(src_port, dst_port, length):
     # if we want to get name:
@@ -96,20 +50,28 @@ def get_process(src_port, dst_port, length):
         received_per_sec = bytes_received[process_id] / (current_time - process_time[process_id])
         print(f"bytes received per sec: {received_per_sec} bytes per second")
 
+def get_interfaces_mac():
+    interfaces_mac = {}
+    base_path = "/sys/class/net/"
+    for interface in os.listdir(base_path):
+        try:
+            with open(os.path.join(base_path, interface, 'address'), 'r') as f:
+                mac_address = f.read().strip()
+            interfaces_mac[interface] = mac_address.upper()
+        except IOError:
+            print("Interface: {} has been skipped due to missing MAC Address\n".format(interface))
+            pass
+        if not interfaces_mac:
+            print("No interfaces found.")
+            sys.exit(1)
+    return interfaces_mac
+
 def main():
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    interfaces = get_interfaces_mac()
     while True:
         raw_data, addr = s.recvfrom(65535)
-        eth = ethernet_head(raw_data)
-        print('\nEthernet Frame:')
-        print('Interface:', addr[0])
-        print('Destination: {}, Source: {}, Protocol: {}'.format(eth[0], eth[1], eth[2]))
-        if eth[2] == 8:
-            ipv4 = ipv4_head(eth[3])
-            print( '\t - ' + 'IPv4 Packet:')
-            print('\t\t - ' + 'Version: {}, Header Length: {}, TTL: {},'.format(ipv4[0], ipv4[1], ipv4[2]))
-            print('\t\t - ' + 'Protocol: {}, Source: {}, Target: {}'.format(ipv4[3], ipv4[4], ipv4[5]))
-            print_protocol(ipv4)
+        parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
 
         sys.stdout.flush()
 

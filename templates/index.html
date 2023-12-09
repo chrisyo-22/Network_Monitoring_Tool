@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script> <!-- Add this line -->.
+    <link rel="stylesheet" href="../static/css/index.css">
+
+
+</head>
+
+<body>
+    <h1> Network Monitor</h1>
+    <div class="containers">
+        <div class="activities-containers">
+
+            <div class="process-activities-container table-container">
+                <button id="toggle-process-activities-btn" class="toggle-btn">Process Activities</button>
+                <table id="process-activity-body">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>PID</th>
+                            <th>Send (B/sec)</th>
+                            <th>Receive (B/sec)</th>
+                            <th>Total (B/sec)</th>
+                        </tr>
+                    </thead>
+                    <!-- Insert data here -->
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="network-activities-container table-container">
+                <button id="toggle-network-activities-btn" class="toggle-btn">Network Activities: Network IO: | Network
+                    Utilization: </button>
+                <table id="network-activity-body">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>PID</th>
+                            <th>Address</th>
+                            <th>Send (B/sec)</th>
+                            <th>Receive (B/sec)</th>
+                            <th>Total (B/sec)</th>
+                        </tr>
+                    </thead>
+                    <!-- Insert data here -->
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="tcp-connection-container table-container">
+                <button id="toggle-tcp-connection-btn" class="toggle-btn">TCP Connections</button>
+                <table id="tcp-connection-body">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>PID</th>
+                            <th>Local Address</th>
+                            <th>Local Port</th>
+                            <th>Remote Address</th>
+                            <th>Remote Port</th>
+                            <th>PacketLoss</th>
+                            <th>Latency</th>
+                        </tr>
+                    </thead>
+                    <!-- Insert data here -->
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="listening-port-container table-container">
+                <button id="toggle-listening-port-btn" class="toggle-btn">Listening Ports</button>
+                <table id="listening-port-body">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>PID</th>
+                            <th>Address</th>
+                            <th>Port</th>
+                            <th>Protocol</th>
+                            <th>Firewall Status</th>
+                        </tr>
+                    </thead>
+                    <!-- Insert data here -->
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="table-container template">
+                <button class="toggle-btn template">Toggle Process Activities</button>
+                <table>
+                    <thead>
+                        <tr class="template">
+                            <th>Image</th>
+                            <th>PID</th>
+                            <th>Send (B/sec)</th>
+                            <th>Receive (B/sec)</th>
+                            <th>Total (B/sec)</th>
+                        </tr>
+                    </thead>
+                    <!-- Insert data here -->
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="side_details">
+            <div class="network-graph">
+                <h2 class="network-graph">network-graph</h2>
+                <canvas id="realtimeChart"></canvas>
+            </div>
+            <div id= "packet_container" class="packet-sniff-container">
+                <!-- Example of a single packet data card -->
+                <!-- <div class="packet-card">
+                    <div class="card-header">Packet 1</div>
+                    <div class="card-body">
+                        <p><strong>Interface:</strong> enp0s3</p>
+                        <p><strong>Destination:</strong> 52:54:00:12:35:02</p>
+                        <p><strong>Source:</strong> 08:00:27:F4:20:19</p>
+                        <p><strong>Protocol:</strong> IPv4</p>
+                        <p><strong>Other Details:</strong> Protocol: 6, Source: 10.0.2.15, Target: 40.71.11.167</p>
+                    </div>
+
+                </div> -->
+
+
+                <!-- Repeat for other packets -->
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="../static/index.mjs"></script>
+    <script type="module" src="../static/networkChart.mjs"></script>
+
+</body>
+
+</html>
