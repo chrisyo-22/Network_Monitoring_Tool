@@ -60,7 +60,7 @@ def _parse_protocol4(ipv4):
 def _parse_protocol6(ipv6):
     data = ipv6.payload
     protocol = ipv6.next_header
-    if protocol == 1:
+    if protocol == 58:
         return _handle_icmp6(data)
     if protocol == 6:
         return _handle_tcp(data, ipv6.kind, ipv6.getPayloadLength())
