@@ -13,6 +13,8 @@ from lib.parse.udp import UDP
 ignoreSame = True
 capturing = False
 
+TIMEOUT = 1
+
 # refresh intervals to clean up connection and cache
 CLEAN_UP = 10
 
@@ -169,17 +171,21 @@ def main():
 def begin_capture(writeSniff, writeProc):
     global capturing
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    s.settimeout(TIMEOUT)
     interfaces = get_interfaces_mac()
     # Start thread here (pass in writeProc to write to process file)
     capturing = True
     while capturing:
-        raw_data, addr = s.recvfrom(65535)
-        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
-        if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
-            data = parsed.getData()
-            pid = map_to_process(data['src'], data['dst'], data['type'])
-            writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
-            # Do data stuff here
+        try:
+            raw_data, addr = s.recvfrom(65535)
+            parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
+            if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+                data = parsed.getData()
+                pid = map_to_process(data['src'], data['dst'], data['type'])
+                writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
+                # Do data stuff here
+        except socket.timeout:
+            continue
     s.close()
     return True
 
