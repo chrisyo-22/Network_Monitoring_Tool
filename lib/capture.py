@@ -3,19 +3,29 @@ import sys
 import os
 import time
 import psutil
+import threading
+import math
 
 from pparser import parse
 from parse.tcp import TCP
 from parse.udp import UDP
 
+ignoreSame = True
+
 # refresh intervals to clean up connection and cache
-CLEAN_UP = 3
+CLEAN_UP = 10
 
 # refresh intervals to re-calculate metrics
-UPDATE = 1
+UPDATE = 5
+
+# for synchronization
+metrics_lock = threading.Lock()
 
 # last timestamp before refresh
 last_timestamp = time.time()
+
+# Active processes
+processes = {}
 
 # cached port to process id mapping
 port_to_process = {}
@@ -32,9 +42,45 @@ bytes_sent = {}
 # process id to bytes received mapping
 bytes_received = {}
 
-ignoreSame = True
+def update_metrics():
+    global bytes_received
+    global packets_received
+    global bytes_sent
+    global packets_sent
+    global processes
+    global last_timestamp
+    global metrics_lock
+    while True:
+        time.sleep(UPDATE)
+        with metrics_lock:
+            print("\n++++++++++++++++++++++++++++++++++++")
+            current_time = time.time()
+            time_diff = current_time - last_timestamp
+            last_timestamp = current_time
+            for pid in processes:
+                bytes_sent_per_s = 0
+                bytes_received_per_s = 0
+                packets_sent_per_s = 0
+                packets_received_per_s = 0
+                if bytes_sent.get(pid):
+                    bytes_sent_per_s = math.ceil(bytes_sent[pid]/time_diff)
+                    bytes_sent[pid] = 0
+                if bytes_received.get(pid):
+                    bytes_received_per_s = math.ceil(bytes_received[pid]/time_diff)
+                    bytes_received[pid] = 0
+                if packets_sent.get(pid):
+                    packets_sent_per_s = math.ceil(packets_sent[pid]/time_diff)
+                    packets_sent[pid] = 0
+                if packets_received.get(pid):
+                    packets_received_per_s = math.ceil(packets_received[pid]/time_diff)
+                    packets_received[pid] = 0  
+                print(f"process {pid}, bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}") 
+            print("++++++++++++++++++++++++++++++++++++\n")                
+            sys.stdout.flush()
 
-def map_to_process(src_port, dst_port, kind): 
+def map_to_process(src_port, dst_port, kind):
+    global port_to_process
+    global processes
     pid = port_to_process.get(dst_port) if kind == "Incoming" else port_to_process.get(src_port)
     if not pid: 
         connections = psutil.net_connections(kind='inet')
@@ -42,48 +88,41 @@ def map_to_process(src_port, dst_port, kind):
             if kind == "Incoming":
                 if conn.laddr.port == dst_port:
                     port_to_process[dst_port] = conn.pid
-                    return conn.pid
+                    pid = conn.pid
+                    break
             else:
                 if conn.laddr.port == src_port:
                     port_to_process[src_port] = conn.pid
-                    return conn.pid
+                    pid = conn.pid
+                    break
+    if not processes.get(pid):
+        processes[pid] = True
     return pid
 
 def track_metric(src_port, dst_port, length, kind):
-    pid = map_to_process(src_port, dst_port, kind)
-    if not pid:
-        return
-    if kind == "Incoming":
-        if not bytes_received.get(pid):
-            bytes_received[pid] = 0
-        bytes_received[pid] += length
-        if not packets_received.get(pid):
-            packets_received[pid] = 0
-        packets_received[pid] += 1
-    else:
-        if not bytes_sent.get(pid):
-            bytes_sent[pid] = 0
-        bytes_sent[pid] += length
-        if not packets_sent.get(pid):
-            packets_sent[pid] = 0
-        packets_sent[pid] += 1
-    print("\n+++++++++++++++++++++++++++++++\n")
-    print(port_to_process)
-    print(bytes_received)
-    print(packets_received)
-    print(bytes_sent)
-    print(packets_sent)
-    print("\n+++++++++++++++++++++++++++++++\n")
-
-    """
-    current_time = time.time()
-    if bytes_sent.get(process_id):
-        sent_per_sec = bytes_sent[process_id] / (current_time - process_time[process_id])
-        print(f"bytes sent per sec: {sent_per_sec} bytes per second")
-    if bytes_received.get(process_id):
-        received_per_sec = bytes_received[process_id] / (current_time - process_time[process_id])
-        print(f"bytes received per sec: {received_per_sec} bytes per second")
-    """
+    global bytes_received
+    global packets_received
+    global bytes_sent
+    global packets_sent
+    global metrics_lock
+    with metrics_lock:
+        pid = map_to_process(src_port, dst_port, kind)
+        if not pid:
+            return
+        if kind == "Incoming":
+            if not bytes_received.get(pid):
+                bytes_received[pid] = 0
+            bytes_received[pid] += length
+            if not packets_received.get(pid):
+                packets_received[pid] = 0
+            packets_received[pid] += 1
+        else:
+            if not bytes_sent.get(pid):
+                bytes_sent[pid] = 0
+            bytes_sent[pid] += length
+            if not packets_sent.get(pid):
+                packets_sent[pid] = 0
+            packets_sent[pid] += 1
 
 def get_interfaces_mac():
     interfaces_mac = {}
@@ -102,6 +141,8 @@ def get_interfaces_mac():
     return interfaces_mac
 
 def main():
+    threading.Thread(target=update_metrics).start()
+
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
     interfaces = get_interfaces_mac()
     while True:

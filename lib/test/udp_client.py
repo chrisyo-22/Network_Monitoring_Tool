@@ -9,4 +9,4 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 while True:
     message = "Hello, server!"
     client_socket.sendto(message.encode(), (server_ip, server_port))
-    time.sleep(10) # send one every 10 seconds
+    time.sleep(1)
