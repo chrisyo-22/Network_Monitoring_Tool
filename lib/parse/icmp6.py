@@ -7,6 +7,10 @@ _ICMPV6_TYPES = {
     4: 'Parameter Problem',
     128: 'Echo Request',
     129: 'Echo Reply',
+    135: 'Neighbor Solicitation',
+    136: 'Neighbor Advertisement',
+    139: 'ICMP Node Information Query',
+    140: 'ICMP Node Information Response'
 }
 
 class ICMP6:
@@ -20,6 +24,9 @@ class ICMP6:
     def __str__(self):
         info = '\t - ICMPv6 Packet:\n'
         info += '\t\t - Type: {} ({}), Code: {}, Checksum: {}\n'.format(self.get_type(), self.type, self.code, self.chksum)
-        info += '\t\t - ICMPv6 Payload:\n'
+        return info
+    
+    def strPayload(self):
+        info = '\t\t - ICMP Payload:\n'
         info += '\t\t ' + str(self.payload) + '\n'
         return info
