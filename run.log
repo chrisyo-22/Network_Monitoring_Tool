@@ -1,3 +1,16 @@
 Starting packet sniffer...
-Process ID is 43398
+Process ID is 45027
+Non HTTP Object: 'utf-8' codec can't decode byte 0xda in position 362: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0xda in position 362: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0xe4 in position 364: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0xc7 in position 366: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0xda in position 362: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0xda in position 362: invalid continuation byte
+Non HTTP Object: 'utf-8' codec can't decode byte 0x82 in position 387: invalid start byte
 Stopping packet sniffer...

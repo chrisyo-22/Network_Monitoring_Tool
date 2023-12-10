@@ -141,6 +141,13 @@ def get_interfaces_mac():
             sys.exit(1)
     return interfaces_mac
 
+def get_process_name(pid):
+    try:
+        process = psutil.Process(pid)
+        return process.name()
+    except psutil.NoSuchProcess:
+        return None
+
 def main():
     threading.Thread(target=update_metrics).start()
 
@@ -164,6 +171,8 @@ def begin_capture(writeSniff, writeProc):
         parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
         if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
             data = parsed.getData()
+            pid = map_to_process(data['src'], data['dst'], data['type'])
+            writeSniff('Above Packet is for process: {} ({})\n'.format(get_process_name(pid), pid))
             # Do data stuff here
     s.close()
     return True

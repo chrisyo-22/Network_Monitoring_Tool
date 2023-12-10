@@ -71,6 +71,7 @@ def parse(raw_data, iface, mac_addr, ignoreSame, writeSniff):
     eth = EthFrame(raw_data, iface, mac_addr)
     if (ignoreSame and eth.kind == "Loopback"):
         return
+    writeSniff('\n')
     writeSniff(eth)
     if eth.proto == 2048:
         ipv4 = IPV4(eth.payload, eth.kind)
