@@ -16,6 +16,9 @@ capturing = False
 metrics_thread_exited = True
 cleanup_thread_exited = True
 
+# socket timeout
+TIMEOUT = 1
+
 # time intervals to clean up connection and cache
 CLEAN_UP = 10
 
@@ -273,6 +276,7 @@ def begin_capture(writeSniff, writeProc):
     global metrics_thread_exited
     global cleanup_thread_exited
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    s.settimeout(TIMEOUT)
     interfaces = get_interfaces_mac()
     capturing = True
     metrics_thread_exited = False
@@ -282,13 +286,17 @@ def begin_capture(writeSniff, writeProc):
     # thread to clean up exited processes every CLEAN_UP seconds
     threading.Thread(target=cleanup_processes, args=(writeProc,)).start()
     while capturing:
-        raw_data, addr = s.recvfrom(65535)
-        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
-        if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
-            data = parsed.getData()
-            pid = map_to_process(data['src'], data['dst'], data['type'], writeProc)
-            writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
-            track_metric(pid, data['bytes'], data['type'])
+      try:
+          raw_data, addr = s.recvfrom(65535)
+          parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
+          if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+              data = parsed.getData()
+              pid = map_to_process(data['src'], data['dst'], data['type'], writeProc)
+              writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
+              track_metric(pid, data['bytes'], data['type'])
+        except socket.timeout:
+            continue
+
     s.close()
     while not (metrics_thread_exited and cleanup_thread_exited):
         time.sleep(0.01)
