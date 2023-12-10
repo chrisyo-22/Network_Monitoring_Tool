@@ -1,19 +1,26 @@
 # Network Monitoring Tool
 
-# To run on mininet
 ```
+# To run on mininet vm
 ssh mininet@....
 
-cd lib
+# install packages
 sudo python3 -m pip install -r requirements.txt
+
+# start mininet using default topology
 sudo mn
-h1 sudo python3 capture.py > capture.log &
+
+# To start capturing on host h1
+h1 ./run.sh captured.log metrics.log
+
+# To stop capturing on host h1
+h1 ./stop.sh <pid>
 
 # testing UDP
-h1 python3 test/udp_server.py &
-h2 python3 test/udp_client.py &
+h1 python3 lib/test/udp_server.py &
+h2 python3 lib/test/udp_client.py &
 
 # testing TCP
-h1 python3 test/http_server.py &
+h1 python3 lib/test/http_server.py &
 h2 wget http://10.0.0.1:3946
 ```
