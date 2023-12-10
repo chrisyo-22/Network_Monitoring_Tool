@@ -6,13 +6,14 @@
 sudo python3 -m pip install -r requirements.txt
 
 # To start capturing (feel free to change the log file name)
-./run.sh captured.log metrics.log
+# root privileges is required due to the extensive use of raw sockets
+sudo bash ./run.sh captured.log metrics.log
 # Packets captured will be logged to captured.log
 # System metrics will be calculated and logged to metrics.log every 5 seconds
 # You can change the calculation frequency in capture.py by modifying the UPDATE flag.
 
 # To stop capturing
-./stop.sh <pid>
+sudo bash ./stop.sh <pid>
 # This will stop both capturing and metrics calculations
 ```
 
