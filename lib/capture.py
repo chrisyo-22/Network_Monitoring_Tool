@@ -142,9 +142,15 @@ def get_interfaces_mac():
     return interfaces_mac
 
 def get_process_name(pid):
+    if not pid:
+        return "Unknown (Short-Lived Connections)"
     try:
         process = psutil.Process(pid)
-        return process.name()
+        cmdline = process.cmdline()
+        if len(cmdline) > 1:
+            return process.name() + " " + cmdline[1] 
+        else:
+            return process.name()
     except psutil.NoSuchProcess:
         return None
 
@@ -172,7 +178,7 @@ def begin_capture(writeSniff, writeProc):
         if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
             data = parsed.getData()
             pid = map_to_process(data['src'], data['dst'], data['type'])
-            writeSniff('Above Packet is for process: {} ({})\n'.format(get_process_name(pid), pid))
+            writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
             # Do data stuff here
     s.close()
     return True
