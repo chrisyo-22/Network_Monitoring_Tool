@@ -7,12 +7,18 @@ _ICMPV6_TYPES = {
     4: 'Parameter Problem',
     128: 'Echo Request',
     129: 'Echo Reply',
+    130: 'Multicast Listener Query',
+    131: 'Multicast Listener Report',
+    132: 'Multicast Listener Done',
+    133: 'Router Solicitation',
+    134: 'Router Advertisement',
     135: 'Neighbor Solicitation',
     136: 'Neighbor Advertisement',
     139: 'ICMP Node Information Query',
     140: 'ICMP Node Information Response',
     143: 'Version 2 Multicast Listener Report'
 }
+
 
 class ICMP6:
     def __init__(self, raw_data):
