@@ -153,36 +153,48 @@ def update_metrics():
         sys.stdout.flush()
         last_timestamp = time.time()
 
+def validate_connection(port, pid):
+    global port_to_process
+    global process_to_ports
+    if not pid:
+        return pid
+    pid_ = pid
+    try:
+        proc = psutil.Process(pid_)
+        for conn in proc.connections(kind='inet'):
+            if conn.laddr.port == port:
+                # validated connection
+                return pid_
+        # connection ended - update mapping
+        if port_to_process.get(port):
+            del port_to_process[port]
+        if pid_ in process_to_ports:
+            if port in process_to_ports[pid_]:
+                process_to_ports[pid_].remove(port)
+        pid_ = None
+    except:
+        # process is dead
+        cleanup_pid(pid_)
+        pid_ = None
+    return pid_
+
 def map_to_process(src_port, dst_port, kind):
     global port_to_process
     global process_to_ports
-    pid = port_to_process.get(dst_port) if kind == "Incoming" else port_to_process.get(src_port)
-    try:
-        psutil.Process(pid)
-    except:
-        # pid is dead
-        cleanup_pid(pid)
-        pid = None
+    port = dst_port if kind == "Incoming" else src_port
+    pid = port_to_process.get(port)
+    pid = validate_connection(port, pid)
     if not pid: 
         connections = psutil.net_connections(kind='inet')
         for conn in connections:
-            if kind == "Incoming":
-                if conn.laddr.port == dst_port:
-                    port_to_process[dst_port] = conn.pid
-                    pid = conn.pid
-                    if not process_to_ports.get(pid):
-                        process_to_ports[pid] = []
-                    process_to_ports[pid] += [dst_port]
-                    break
-            else:
-                if conn.laddr.port == src_port:
-                    port_to_process[src_port] = conn.pid
-                    pid = conn.pid
-                    if not process_to_ports.get(pid):
-                        process_to_ports[pid] = []
-                    process_to_ports[pid] += [src_port]
-                    break
-        if pid:
+            if conn.laddr.port == port:
+                pid = conn.pid
+                port_to_process[port] = pid
+                if not process_to_ports.get(pid):
+                    process_to_ports[pid] = []
+                process_to_ports[pid] += [port]
+                break
+        if pid and not process_locks.get(pid):
             process_locks[pid] = threading.Lock()
     return pid
 
