@@ -5,6 +5,7 @@ import time
 import psutil
 import threading
 import math
+from datetime import datetime
 
 from lib.pparser import parse
 from lib.parse.tcp import TCP
@@ -12,26 +13,32 @@ from lib.parse.udp import UDP
 
 ignoreSame = True
 capturing = False
+metrics_thread_exited = True
+cleanup_thread_exited = True
 
+# socket timeout
 TIMEOUT = 1
 
-# refresh intervals to clean up connection and cache
+# time intervals to clean up connection and cache
 CLEAN_UP = 10
 
-# refresh intervals to re-calculate metrics
+# time intervals to re-calculate metrics
 UPDATE = 5
 
-# for synchronization
-metrics_lock = threading.Lock()
+# pid to lock mapping for synchronization
+process_locks = {}
 
 # last timestamp before refresh
 last_timestamp = time.time()
 
-# Active processes
-processes = {}
-
 # cached port to process id mapping
 port_to_process = {}
+
+# process id to list of ports mapping for cleanup purposes
+process_to_ports = {}
+
+# process id to last refresh time mapping
+process_refresh_time = {}
 
 # process id to packets sent mapping
 packets_sent = {}
@@ -45,73 +52,181 @@ bytes_sent = {}
 # process id to bytes received mapping
 bytes_received = {}
 
-def update_metrics():
-    global bytes_received
+def cleanup_pid(pid, writeProc):
+    global process_locks
+    global process_refresh_time
+    global packets_sent
     global packets_received
     global bytes_sent
-    global packets_sent
-    global processes
-    global last_timestamp
-    global metrics_lock
-    while True:
-        time.sleep(UPDATE)
-        with metrics_lock:
-            print("\n++++++++++++++++++++++++++++++++++++")
-            current_time = time.time()
-            time_diff = current_time - last_timestamp
-            last_timestamp = current_time
-            for pid in processes:
-                bytes_sent_per_s = 0
-                bytes_received_per_s = 0
-                packets_sent_per_s = 0
-                packets_received_per_s = 0
-                if bytes_sent.get(pid):
-                    bytes_sent_per_s = math.ceil(bytes_sent[pid]/time_diff)
-                    bytes_sent[pid] = 0
-                if bytes_received.get(pid):
-                    bytes_received_per_s = math.ceil(bytes_received[pid]/time_diff)
-                    bytes_received[pid] = 0
-                if packets_sent.get(pid):
-                    packets_sent_per_s = math.ceil(packets_sent[pid]/time_diff)
-                    packets_sent[pid] = 0
-                if packets_received.get(pid):
-                    packets_received_per_s = math.ceil(packets_received[pid]/time_diff)
-                    packets_received[pid] = 0  
-                print(f"process {pid}, bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}") 
-            print("++++++++++++++++++++++++++++++++++++\n")                
-            sys.stdout.flush()
-
-def map_to_process(src_port, dst_port, kind):
+    global bytes_received
+    global process_to_ports
     global port_to_process
-    global processes
-    pid = port_to_process.get(dst_port) if kind == "Incoming" else port_to_process.get(src_port)
+    lock = process_locks.get(pid)
+    # check if process has been cleaned
+    if not lock:
+        return
+    with lock:
+        writeProc("\n++++++++++++++++++++++++++++++++++++\n")
+        writeProc(f"[{datetime.now()}]\n")
+        writeProc(f"proces {pid} is dead. Cleaning up...\n")
+        writeProc("++++++++++++++++++++++++++++++++++++\n") 
+        # clean up if it has not been cleaned up yet
+        if process_locks.get(pid): 
+            del process_locks[pid]
+        ports = process_to_ports.get(pid)
+        if ports:
+            for port in ports:
+                if port_to_process.get(port):
+                    del port_to_process[port]
+        if process_refresh_time.get(pid):
+            del process_refresh_time[pid]
+        if bytes_received.get(pid):
+            del bytes_received[pid]
+        if bytes_sent.get(pid):
+            del bytes_sent[pid]
+        if packets_sent.get(pid):
+            del packets_sent[pid]
+        if packets_received.get(pid):
+            del packets_received[pid]
+
+"""
+Thread function - to clean up any exited process
+"""
+def cleanup_processes(writeProc):
+    global capturing
+    global cleanup_thread_exited
+    while capturing:
+        time.sleep(CLEAN_UP)
+        pids = list(process_locks.keys()) 
+        for pid in pids:
+            try:
+                psutil.Process(pid)
+            except:
+                # process is dead
+                cleanup_pid(pid, writeProc)
+    cleanup_thread_exited = True
+
+def calc_metric_for_pid(pid, writeProc):
+    global bytes_sent
+    global bytes_received
+    global packets_sent
+    global packets_received
+    global process_locks
+    global process_refresh_time
+    global last_timestamp
+    lock = process_locks.get(pid)
+    # check if the process has been cleaned
+    if not lock:
+        return
+    with lock:
+        # re-check if the process has been cleaned
+        if not process_locks.get(pid): 
+            return
+        # initialize
+        bytes_sent_per_s = 0
+        bytes_received_per_s = 0
+        packets_sent_per_s = 0
+        packets_received_per_s = 0
+        # get time difference
+        current_time = time.time()
+        last_refresh_time = process_refresh_time.get(pid)
+        if not last_refresh_time:
+            last_refresh_time = last_timestamp
+        time_diff = current_time - last_refresh_time
+        process_refresh_time[pid] = current_time
+        # re-calculate metrics
+        if bytes_sent.get(pid):
+            bytes_sent_per_s = math.ceil(bytes_sent[pid]/time_diff)
+            bytes_sent[pid] = 0
+        if bytes_received.get(pid):
+            bytes_received_per_s = math.ceil(bytes_received[pid]/time_diff)
+            bytes_received[pid] = 0
+        if packets_sent.get(pid):
+            packets_sent_per_s = math.ceil(packets_sent[pid]/time_diff)
+            packets_sent[pid] = 0
+        if packets_received.get(pid):
+            packets_received_per_s = math.ceil(packets_received[pid]/time_diff)
+            packets_received[pid] = 0  
+        writeProc(f"process {pid}, bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}\n") 
+
+"""
+Thread function - to re-calculate process metrics
+"""
+def update_metrics(writeProc):
+    global process_locks
+    global last_timestamp
+    global capturing
+    global metrics_thread_exited
+    while capturing:
+        # update metrics every UPDATE seconds
+        time.sleep(UPDATE)
+        writeProc("\n++++++++++++++++++++++++++++++++++++\n")
+        writeProc(f"[{datetime.now()}]\n")
+        # TODO: print system usage
+        pids = list(process_locks.keys())
+        for pid in pids:
+            calc_metric_for_pid(pid, writeProc)
+        writeProc("++++++++++++++++++++++++++++++++++++\n")    
+        last_timestamp = time.time()
+    metrics_thread_exited = True
+
+def validate_connection(port, pid, writeProc):
+    global port_to_process
+    global process_to_ports
+    if not pid:
+        return pid
+    pid_ = pid
+    try:
+        proc = psutil.Process(pid_)
+        for conn in proc.connections(kind='inet'):
+            if conn.laddr.port == port:
+                # validated connection
+                return pid_
+        # connection ended - update mapping
+        if port_to_process.get(port):
+            del port_to_process[port]
+        if pid_ in process_to_ports:
+            if port in process_to_ports[pid_]:
+                process_to_ports[pid_].remove(port)
+        pid_ = None
+    except:
+        # process is dead
+        cleanup_pid(pid_, writeProc)
+        pid_ = None
+    return pid_
+
+def map_to_process(src_port, dst_port, kind, writeProc):
+    global port_to_process
+    global process_to_ports
+    port = dst_port if kind == "Incoming" else src_port
+    pid = port_to_process.get(port)
+    pid = validate_connection(port, pid, writeProc)
     if not pid: 
         connections = psutil.net_connections(kind='inet')
         for conn in connections:
-            if kind == "Incoming":
-                if conn.laddr.port == dst_port:
-                    port_to_process[dst_port] = conn.pid
-                    pid = conn.pid
-                    break
-            else:
-                if conn.laddr.port == src_port:
-                    port_to_process[src_port] = conn.pid
-                    pid = conn.pid
-                    break
-    if not processes.get(pid):
-        processes[pid] = True
+            if conn.laddr.port == port:
+                pid = conn.pid
+                port_to_process[port] = pid
+                if not process_to_ports.get(pid):
+                    process_to_ports[pid] = []
+                process_to_ports[pid] += [port]
+                break
+        if pid and not process_locks.get(pid):
+            process_locks[pid] = threading.Lock()
     return pid
 
-def track_metric(src_port, dst_port, length, kind):
+def track_metric(pid, length, kind):
     global bytes_received
     global packets_received
     global bytes_sent
     global packets_sent
-    global metrics_lock
-    with metrics_lock:
-        pid = map_to_process(src_port, dst_port, kind)
-        if not pid:
-            return
+    global process_locks
+    if not pid:
+        return
+    lock = process_locks.get(pid)
+    if not lock:
+        return
+    with lock:
         if kind == "Incoming":
             if not bytes_received.get(pid):
                 bytes_received[pid] = 0
@@ -156,37 +271,35 @@ def get_process_name(pid):
     except psutil.NoSuchProcess:
         return None
 
-def main():
-    threading.Thread(target=update_metrics).start()
-
-    s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
-    interfaces = get_interfaces_mac()
-    while True:
-        raw_data, addr = s.recvfrom(65535)
-        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame)
-        if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
-            data = parsed.getData()
-            track_metric(data['src'], data['dst'], data['bytes'], data['type'])
-        
 def begin_capture(writeSniff, writeProc):
     global capturing
+    global metrics_thread_exited
+    global cleanup_thread_exited
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
     s.settimeout(TIMEOUT)
     interfaces = get_interfaces_mac()
-    # Start thread here (pass in writeProc to write to process file)
     capturing = True
+    metrics_thread_exited = False
+    cleanup_thread_exited = False
+    # thread to calculate metrics every UPDATE seconds
+    threading.Thread(target=update_metrics, args=(writeProc,)).start()
+    # thread to clean up exited processes every CLEAN_UP seconds
+    threading.Thread(target=cleanup_processes, args=(writeProc,)).start()
     while capturing:
-        try:
-            raw_data, addr = s.recvfrom(65535)
-            parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
-            if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
-                data = parsed.getData()
-                pid = map_to_process(data['src'], data['dst'], data['type'])
-                writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
-                # Do data stuff here
+      try:
+          raw_data, addr = s.recvfrom(65535)
+          parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
+          if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+              data = parsed.getData()
+              pid = map_to_process(data['src'], data['dst'], data['type'], writeProc)
+              writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
+              track_metric(pid, data['bytes'], data['type'])
         except socket.timeout:
             continue
+
     s.close()
+    while not (metrics_thread_exited and cleanup_thread_exited):
+        time.sleep(0.01)
     return True
 
 def stop_capture():

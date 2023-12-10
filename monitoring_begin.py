@@ -32,9 +32,11 @@ def init(sniff_log, proc_log):
 
 def logSniff(text):
     sniff_file.write(str(text))
+    sniff_file.flush()
 
 def logProc(text):
     proc_file.write(str(text))
+    proc_file.flush()
 
 if __name__ == '__main__':
     main()
