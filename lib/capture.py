@@ -60,6 +60,10 @@ def cleanup_pid(pid):
     if not lock:
         return
     with lock:
+        print("\n++++++++++++++++++++++++++++++++++++")
+        print(f"proces {pid} is dead. Cleaning up...")
+        print("++++++++++++++++++++++++++++++++++++\n") 
+        sys.stdout.flush()   
         # clean up if it has not been cleaned up yet
         if process_locks.get(pid): 
             del process_locks[pid]
@@ -78,6 +82,17 @@ def cleanup_pid(pid):
             del packets_sent[pid]
         if packets_received.get(pid):
             del packets_received[pid]
+
+def cleanup_processes():
+    while True:
+        time.sleep(CLEAN_UP)
+        pids = list(process_locks.keys()) 
+        for pid in pids:
+            try:
+                psutil.Process(pid)
+            except:
+                # process is dead
+                cleanup_pid(pid)
 
 def calc_metric_for_pid(pid):
     global bytes_sent
@@ -131,7 +146,8 @@ def update_metrics():
         print("\n++++++++++++++++++++++++++++++++++++")
         print(f"[{datetime.now()}]")
         # TODO: print system usage
-        for pid in process_locks:
+        pids = list(process_locks.keys())
+        for pid in pids:
             calc_metric_for_pid(pid)
         print("++++++++++++++++++++++++++++++++++++\n")    
         sys.stdout.flush()
@@ -144,7 +160,7 @@ def map_to_process(src_port, dst_port, kind):
     try:
         psutil.Process(pid)
     except:
-        # outdated pid
+        # pid is dead
         cleanup_pid(pid)
         pid = None
     if not pid: 
@@ -216,6 +232,7 @@ def get_interfaces_mac():
 
 def main():
     threading.Thread(target=update_metrics).start()
+    threading.Thread(target=cleanup_processes).start()
 
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
     interfaces = get_interfaces_mac()
