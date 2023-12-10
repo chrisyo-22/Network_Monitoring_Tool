@@ -11,6 +11,11 @@ from lib.parse.arp import ARP
 from lib.parse.ipv6 import IPV6
 from lib.parse.icmp6 import ICMP6
 from lib.parse.dhcp6 import DHCP6
+
+"""
+Processes TCP packets
+also handles specific protocols: DNS, HTTP, SSH
+"""
 def _handle_tcp(data, kind, len, writeSniff):
     tcp = TCP(data, kind, len)
     writeSniff(tcp)
@@ -25,14 +30,24 @@ def _handle_tcp(data, kind, len, writeSniff):
         writeSniff(ssh)
     return tcp
 
+"""
+Handles ICMP packets for IPv4
+"""
 def _handle_icmp(data, writeSniff):
     icmp = ICMP(data)
     return writeSniff(icmp)
 
+"""
+Handles ICMPv6 packets for IPv6
+"""
 def _handle_icmp6(data, writeSniff):
     icmp = ICMP6(data)
     return writeSniff(icmp)
 
+"""
+Processes UDP packets
+also handles specific protocols: DNS, DHCP
+"""
 def _handle_udp(data, kind, v6, writeSniff):
     udp = UDP(data, kind)
     writeSniff(udp)
@@ -47,6 +62,9 @@ def _handle_udp(data, kind, v6, writeSniff):
         writeSniff(dhcp)
     return udp
 
+"""
+Parses IPv4 packets
+"""
 def _parse_protocol4(ipv4, writeSniff):
     data = ipv4.payload
     protocol = ipv4.proto
@@ -57,6 +75,9 @@ def _parse_protocol4(ipv4, writeSniff):
     if protocol == 17:
         return _handle_udp(data, ipv4.kind, False, writeSniff)
 
+"""
+Parse IPv6 packets
+"""
 def _parse_protocol6(ipv6, writeSniff):
     data = ipv6.payload
     protocol = ipv6.next_header
@@ -67,6 +88,9 @@ def _parse_protocol6(ipv6, writeSniff):
     if protocol == 17:
         return _handle_udp(data, ipv6.kind, True, writeSniff)
 
+"""
+Parse packets
+"""
 def parse(raw_data, iface, mac_addr, ignoreSame, writeSniff):
     eth = EthFrame(raw_data, iface, mac_addr)
     if (ignoreSame and eth.kind == "Loopback"):

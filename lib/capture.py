@@ -12,8 +12,14 @@ from lib.parse.tcp import TCP
 from lib.parse.udp import UDP
 
 ignoreSame = True
+
+# flag to control capturing
 capturing = False
+
+# flag for safe exiting
 metrics_thread_exited = True
+
+# flag for safe exiting
 cleanup_thread_exited = True
 
 # socket timeout
@@ -52,6 +58,21 @@ bytes_sent = {}
 # process id to bytes received mapping
 bytes_received = {}
 
+# system packets sent since last refresh
+system_packets_sent = 0
+
+# system packets received since last refresh
+system_packets_received = 0
+
+# system bytes sent since last refresh
+system_bytes_sent = 0
+
+# system bytes received since last refresh
+system_bytes_received = 0
+
+"""
+Cleans up datastructures that contain information associated to a dead process pid
+"""
 def cleanup_pid(pid, writeProc):
     global process_locks
     global process_refresh_time
@@ -106,6 +127,46 @@ def cleanup_processes(writeProc):
                 cleanup_pid(pid, writeProc)
     cleanup_thread_exited = True
 
+
+"""
+Calculates and print system metrics
+"""
+def calc_system_metrics(writeProc):
+    global system_packets_sent
+    global system_packets_received
+    global system_bytes_sent
+    global system_bytes_received
+    global last_timestamp
+    cur_bytes_received = 0 
+    cur_packets_received = 0
+    cur_bytes_sent = 0
+    cur_packets_sent = 0
+    current_time = time.time()
+    time_diff = current_time - last_timestamp
+    # parse system metrics from /proc/net/dev
+    with open('/proc/net/dev', 'r') as f:
+        lines = f.readlines()
+    # Skip headers
+    metrics = lines[2:]
+    for metric in metrics:
+        m = metric.split()
+        cur_bytes_received += int(m[1])
+        cur_packets_received += int(m[2])
+        cur_bytes_sent += int(m[9])
+        cur_packets_sent += int(m[10])
+    bytes_sent_per_s = math.ceil((cur_bytes_sent - system_bytes_sent)/time_diff)
+    bytes_received_per_s = math.ceil((cur_bytes_received - system_bytes_received)/time_diff)
+    packets_sent_per_s = math.ceil((cur_packets_sent - system_packets_sent)/time_diff)
+    packets_received_per_s = math.ceil((cur_packets_received - system_packets_received)/time_diff)
+    writeProc(f"System usage, bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}\n") 
+    system_bytes_received = cur_bytes_received
+    system_packets_received = cur_packets_received
+    system_bytes_sent = cur_bytes_sent
+    system_packets_sent = cur_packets_sent
+
+"""
+Calculates and print metrics for process pid
+"""
 def calc_metric_for_pid(pid, writeProc):
     global bytes_sent
     global bytes_received
@@ -162,7 +223,7 @@ def update_metrics(writeProc):
         time.sleep(UPDATE)
         writeProc("\n++++++++++++++++++++++++++++++++++++\n")
         writeProc(f"[{datetime.now()}]\n")
-        # TODO: print system usage
+        calc_system_metrics(writeProc)
         pids = list(process_locks.keys())
         for pid in pids:
             calc_metric_for_pid(pid, writeProc)
@@ -170,6 +231,10 @@ def update_metrics(writeProc):
         last_timestamp = time.time()
     metrics_thread_exited = True
 
+"""
+Validates that process pid is alive and connected to port. 
+If process is dead, it is cleaned up by cleanup_pid()
+"""
 def validate_connection(port, pid, writeProc):
     global port_to_process
     global process_to_ports
@@ -195,6 +260,10 @@ def validate_connection(port, pid, writeProc):
         pid_ = None
     return pid_
 
+"""
+Maps src_port/dst_port to a process, depending on if it is an incoming or outgoing packet.
+Returns pid is mapped.
+"""
 def map_to_process(src_port, dst_port, kind, writeProc):
     global port_to_process
     global process_to_ports
@@ -215,6 +284,9 @@ def map_to_process(src_port, dst_port, kind, writeProc):
             process_locks[pid] = threading.Lock()
     return pid
 
+"""
+Tracks metrics for process pid.
+"""
 def track_metric(pid, length, kind):
     global bytes_received
     global packets_received
@@ -258,6 +330,9 @@ def get_interfaces_mac():
             sys.exit(1)
     return interfaces_mac
 
+"""
+Returns name of process pid
+"""
 def get_process_name(pid):
     if not pid:
         return "Unknown (Short-Lived Connections)"
@@ -271,6 +346,9 @@ def get_process_name(pid):
     except psutil.NoSuchProcess:
         return None
 
+"""
+Starts packet sniffer and threads that output system metrics
+"""
 def begin_capture(writeSniff, writeProc):
     global capturing
     global metrics_thread_exited
@@ -302,6 +380,9 @@ def begin_capture(writeSniff, writeProc):
         time.sleep(0.01)
     return True
 
+"""
+Stops sniffer and thread that output system metrics
+"""
 def stop_capture():
     global capturing
     capturing = False
