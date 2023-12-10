@@ -31,7 +31,7 @@ def _parse_name(raw_data, start):
             jumped = True
             jumps_performed += 1
             if jumps_performed > max_jumps:
-                raise Exception("Too many pointer jumps in DNS name.")
+                return None
         else:
             if length == 0:
                 break
