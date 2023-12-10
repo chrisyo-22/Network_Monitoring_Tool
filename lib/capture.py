@@ -7,11 +7,12 @@ import threading
 import math
 from datetime import datetime
 
-from pparser import parse
-from parse.tcp import TCP
-from parse.udp import UDP
+from lib.pparser import parse
+from lib.parse.tcp import TCP
+from lib.parse.udp import UDP
 
 ignoreSame = True
+capturing = False
 
 # time intervals to clean up connection and cache
 CLEAN_UP = 10
@@ -238,9 +239,22 @@ def get_interfaces_mac():
             print("Interface: {} has been skipped due to missing MAC Address\n".format(interface))
             pass
         if not interfaces_mac:
-            print("No interfaces found.")
+            print("No interfaces found. Exiting")
             sys.exit(1)
     return interfaces_mac
+
+def get_process_name(pid):
+    if not pid:
+        return "Unknown (Short-Lived Connections)"
+    try:
+        process = psutil.Process(pid)
+        cmdline = process.cmdline()
+        if len(cmdline) > 1:
+            return process.name() + " " + cmdline[1] 
+        else:
+            return process.name()
+    except psutil.NoSuchProcess:
+        return None
 
 def main():
     threading.Thread(target=update_metrics).start()
@@ -254,7 +268,24 @@ def main():
         if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
             data = parsed.getData()
             track_metric(data['src'], data['dst'], data['bytes'], data['type'])
-            
-        sys.stdout.flush()
+        
+def begin_capture(writeSniff, writeProc):
+    global capturing
+    s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    interfaces = get_interfaces_mac()
+    # Start thread here (pass in writeProc to write to process file)
+    capturing = True
+    while capturing:
+        raw_data, addr = s.recvfrom(65535)
+        parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
+        if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+            data = parsed.getData()
+            pid = map_to_process(data['src'], data['dst'], data['type'])
+            writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
+            # Do data stuff here
+    s.close()
+    return True
 
-main()
+def stop_capture():
+    global capturing
+    capturing = False
