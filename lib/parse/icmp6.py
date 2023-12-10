@@ -10,7 +10,8 @@ _ICMPV6_TYPES = {
     135: 'Neighbor Solicitation',
     136: 'Neighbor Advertisement',
     139: 'ICMP Node Information Query',
-    140: 'ICMP Node Information Response'
+    140: 'ICMP Node Information Response',
+    143: 'Version 2 Multicast Listener Report'
 }
 
 class ICMP6:
