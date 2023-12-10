@@ -147,7 +147,7 @@ def calc_metric_for_pid(pid, writeProc):
         if packets_received.get(pid):
             packets_received_per_s = math.ceil(packets_received[pid]/time_diff)
             packets_received[pid] = 0  
-        writeProc(f"process {pid}, bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}\n") 
+        writeProc(f"process: {get_process_name(pid)} ({pid}), bytes sent/sec: {bytes_sent_per_s}, bytes received/sec: {bytes_received_per_s}, packets sent/sec: {packets_sent_per_s}, packets received/sec: {packets_received_per_s}\n") 
 
 """
 Thread function - to re-calculate process metrics
@@ -286,14 +286,14 @@ def begin_capture(writeSniff, writeProc):
     # thread to clean up exited processes every CLEAN_UP seconds
     threading.Thread(target=cleanup_processes, args=(writeProc,)).start()
     while capturing:
-      try:
-          raw_data, addr = s.recvfrom(65535)
-          parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
-          if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
-              data = parsed.getData()
-              pid = map_to_process(data['src'], data['dst'], data['type'], writeProc)
-              writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
-              track_metric(pid, data['bytes'], data['type'])
+        try:
+            raw_data, addr = s.recvfrom(65535)
+            parsed = parse(raw_data, addr[0], interfaces[addr[0]], ignoreSame, writeSniff)
+            if parsed and (isinstance(parsed, TCP) or isinstance(parsed, UDP)):
+                data = parsed.getData()
+                pid = map_to_process(data['src'], data['dst'], data['type'], writeProc)
+                writeSniff('Above Packet is for process: {} (PID: {})\n'.format(get_process_name(pid), pid))
+                track_metric(pid, data['bytes'], data['type'])
         except socket.timeout:
             continue
 
