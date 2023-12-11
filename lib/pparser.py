@@ -22,12 +22,14 @@ def _handle_tcp(data, kind, len, writeSniff):
     if 53 in [tcp.src, tcp.dst]:
         dns = DNS(tcp.payload)
         writeSniff(dns)
-    if 80 in [tcp.src, tcp.dst]:
+    elif 80 in [tcp.src, tcp.dst]:
         http = HTTP(tcp.payload)
         writeSniff(http)
-    if 22 in [tcp.src, tcp.dst]:
+    elif 22 in [tcp.src, tcp.dst]:
         ssh = SSH(tcp.payload, tcp.dst)
         writeSniff(ssh)
+    else:
+        writeSniff(tcp.strPayload())
     return tcp
 
 """
@@ -35,14 +37,16 @@ Handles ICMP packets for IPv4
 """
 def _handle_icmp(data, writeSniff):
     icmp = ICMP(data)
-    return writeSniff(icmp)
+    writeSniff(icmp)
+    return writeSniff(icmp.strPayload())
 
 """
 Handles ICMPv6 packets for IPv6
 """
 def _handle_icmp6(data, writeSniff):
     icmp = ICMP6(data)
-    return writeSniff(icmp)
+    writeSniff(icmp)
+    return writeSniff(icmp.strPayload())
 
 """
 Processes UDP packets
@@ -54,12 +58,14 @@ def _handle_udp(data, kind, v6, writeSniff):
     if 53 in [udp.src, udp.dst]:
         dns = DNS(udp.payload)
         writeSniff(dns)
-    if udp.src in [67, 68] or udp.dst in [67, 68]:
+    elif udp.src in [67, 68] or udp.dst in [67, 68]:
         if v6:
             dhcp = DHCP6(udp.payload)
         else:
             dhcp = DHCP(udp.payload)
         writeSniff(dhcp)
+    else:
+        writeSniff(udp.strPayload())
     return udp
 
 """
